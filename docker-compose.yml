@@ -1,0 +1,58 @@
+version: "3"
+services:
+  web:
+    image: nginx:alpine
+    container_name: nginxAdmin
+    volumes:
+      - "./etc/nginx/default.conf:/etc/nginx/conf.d/default.conf"
+      - "./etc/ssl:/etc/ssl"
+      - "./admin-iloc-back:/var/www/html"
+      - "./etc/nginx/default.template.conf:/etc/nginx/conf.d/default.template"
+    ports:
+      - "8093:80"
+      - "3003:443"
+    environment:
+      - NGINX_HOST=${NGINX_HOST}
+    command: /bin/sh -c "envsubst '$$NGINX_HOST' < /etc/nginx/conf.d/default.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+    depends_on:
+      - php
+      - mysqldb
+
+  php:
+    build: ./etc/php
+    container_name: phpAdmin
+    volumes:
+      - "./etc/php/php.ini:/usr/local/etc/php/conf.d/php.ini"
+      - "./admin-iloc-back:/var/www/html"
+
+  composer:
+    image: composer
+    container_name: composerAdmin
+    volumes:
+      - "./web:/app"
+
+  myadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadminAdmin
+    ports:
+      - "8083:80"
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=${MYSQL_HOST}
+    depends_on:
+      - mysqldb
+
+  mysqldb:
+    image: mysql
+    container_name: mysqlAdmin
+    env_file:
+      - ".env"
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    ports:
+      - "8073:3306"
+    volumes:
+      - "./data/db/mysql:/var/lib/mysql"
